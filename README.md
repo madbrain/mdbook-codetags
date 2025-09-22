@@ -4,7 +4,7 @@
 A preprocessor for [mdbook](https://rust-lang.github.io/mdBook/) implementing
 code snippets generation as design by Robert Nystrom to produce
 [Crafting Compilers](https://craftinginterpreters.com/).
-The code is actually a port Nystrom's code to rust.
+The code is actually a port of Nystrom's code to rust.
 
 # Usage
 
