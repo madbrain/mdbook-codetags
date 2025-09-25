@@ -1,24 +1,89 @@
-name: Release on Tag
+name: Deploy Release on Tag
 
 on:
   push:
     tags:
-      - '*'
+      - "v*.*.*"
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  bundle:
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        flavor:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+            ext: tar.gz
+    runs-on: ${{ matrix.flavor.os }}
+    name: Deploy ${{ matrix.flavor.target }}
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build main binary
-        run: cargo build --release
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: 🛠 setup cargo toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          files: target/release/mdbook-codetags
-          tag_name: ${{ github.ref_name }}
+          targets: ${{ matrix.flavor.target }}
+      - name: 🛠 setup cross toolchain
+        if: matrix.flavor.cross == true
+        run: cargo install cross
+
+      - name: ♻️ cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-${{ matrix.flavor.target }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Cross build for ${{ matrix.flavor.target }}
+        if: matrix.flavor.cross == true
+        run: cross build --release --target ${{ matrix.flavor.target }}
+      - name: Cargo build for ${{ matrix.flavor.target }}
+        if: matrix.flavor.cross == false
+        run: cargo build --release --target ${{ matrix.flavor.target }}
+
+      - name: Read manifest version
+        shell: bash
+        id: tagName
+        run: |
+          VERSION=$(cargo pkgid | cut -d# -f2 | cut -d: -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bundle Unix / Linux / MacOS
+        if: matrix.flavor.target != 'x86_64-pc-windows-msvc' && matrix.flavor.target != 'x86_64-pc-windows-gnu'
+        run: |
+          tar -czvf mdbook-codeblocks-v${{ steps.tagName.outputs.version }}-${{ matrix.flavor.target }}.tar.gz -C target/${{ matrix.flavor.target }}/release mdbook-codetags
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: mdbook-codetags-v${{ steps.tagName.outputs.version }}-${{ matrix.flavor.target }}.${{ matrix.flavor.ext }}
+          name: artifact-mdbook-codetags-${{ matrix.flavor.target }}
+          if-no-files-found: error
+
+      - name: Update release with new asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload $MDBOOK_TAG $MDBOOK_ASSET
+
+  release:
+    needs: [bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifact
+          merge-multiple: true
+      - name: Create GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "artifact/*.tar.gz,artifact/*.zip"
+          draft: true
+          artifactErrorsFailBuild: true
+          generateReleaseNotes: true
