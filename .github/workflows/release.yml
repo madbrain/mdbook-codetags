@@ -80,5 +80,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: "artifact/*.tar.gz,artifact/*.zip"
           draft: true
-          artifactErrorsFailBuild: true
           generateReleaseNotes: true
