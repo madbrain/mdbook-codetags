@@ -22,15 +22,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🛠 setup cargo toolchain
+      - name: Setup cargo toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.flavor.target }}
-      - name: 🛠 setup cross toolchain
+      - name: Setup cross toolchain
         if: matrix.flavor.cross == true
         run: cargo install cross
 
-      - name: ♻️ cache Rust dependencies
+      - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ runner.os }}-${{ matrix.flavor.target }}-${{ hashFiles('Cargo.lock') }}
@@ -60,11 +60,6 @@ jobs:
           path: mdbook-codetags-v${{ steps.tagName.outputs.version }}-${{ matrix.flavor.target }}.${{ matrix.flavor.ext }}
           name: artifact-mdbook-codetags-${{ matrix.flavor.target }}
           if-no-files-found: error
-
-      - name: Update release with new asset
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload $MDBOOK_TAG $MDBOOK_ASSET
 
   release:
     needs: [bundle]
