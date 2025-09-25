@@ -52,7 +52,7 @@ jobs:
       - name: Bundle Unix / Linux / MacOS
         if: matrix.flavor.target != 'x86_64-pc-windows-msvc' && matrix.flavor.target != 'x86_64-pc-windows-gnu'
         run: |
-          tar -czvf mdbook-codeblocks-v${{ steps.tagName.outputs.version }}-${{ matrix.flavor.target }}.tar.gz -C target/${{ matrix.flavor.target }}/release mdbook-codetags
+          tar -czvf mdbook-codetags-v${{ steps.tagName.outputs.version }}-${{ matrix.flavor.target }}.tar.gz -C target/${{ matrix.flavor.target }}/release mdbook-codetags
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
